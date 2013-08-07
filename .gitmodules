@@ -1,0 +1,3 @@
+[submodule "piglit"]
+	path = piglit
+	url = http://anongit.freedesktop.org/git/piglit.git
