@@ -1,0 +1,196 @@
+From 613679bfc622e322d1c51e41693ced622208e275 Mon Sep 17 00:00:00 2001
+From: Kalle Vahlman <kalle.vahlman@movial.com>
+Date: Mon, 25 Nov 2013 10:56:27 +0000
+Subject: [PATCH] Fix build and run issues with non-X11 Linux platforms
+
+Signed-off-by: Kalle Vahlman <kalle.vahlman@movial.com>
+---
+ CMakeLists.txt                                             |   12 ++++++++++++
+ tests/egl/spec/egl_khr_create_context/CMakeLists.gles2.txt |    4 ++++
+ tests/egl/spec/egl_khr_create_context/common.c             |   11 +++++++++++
+ tests/egl/spec/egl_khr_create_context/common.h             |    2 ++
+ .../oes_compressed_etc1_rgb8_texture/CMakeLists.gles2.txt  |    2 ++
+ tests/util/CMakeLists.txt                                  |    4 ++--
+ tests/util/piglit-dispatch-init.c                          |    8 ++++++++
+ 7 files changed, 41 insertions(+), 2 deletions(-)
+
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index e952e24..eb73ea4 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -26,6 +26,14 @@ else()
+ 	find_package(OpenGL)
+ endif()
+ 
++if(OPENGL_FOUND)
++    set(PIGLIT_HAS_OPENGL True)
++else()
++    set(GLEXT_INCLUDE_DIR "")
++    set(OPENGL_INCLUDE_PATH "")
++    set(OPENGL_gl_LIBRARY "")
++endif()
++
+ if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
+ 	option(PIGLIT_USE_WAFFLE "Use Waffle in place of GLUT" ON)
+ else()
+@@ -80,6 +88,8 @@ if(PIGLIT_BUILD_CL_TESTS)
+ 	find_package(OpenCL REQUIRED)
+ endif(PIGLIT_BUILD_CL_TESTS)
+ 
++if(X11_FOUND)
++
+ IF(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
+         set(PIGLIT_HAS_GBM True)
+         add_definitions(-DPIGLIT_HAS_GBM)
+@@ -134,6 +144,8 @@ IF(PIGLIT_BUILD_GLX_TESTS)
+ 	pkg_check_modules(GLPROTO REQUIRED glproto)
+ ENDIF()
+ 
++endif()
++
+ # Check for presence of Python 2.6 or greater.
+ foreach(python_cmd python2 python)
+ 	execute_process(
+diff --git a/tests/egl/spec/egl_khr_create_context/CMakeLists.gles2.txt b/tests/egl/spec/egl_khr_create_context/CMakeLists.gles2.txt
+index dde8960..85e65d1 100644
+--- a/tests/egl/spec/egl_khr_create_context/CMakeLists.gles2.txt
++++ b/tests/egl/spec/egl_khr_create_context/CMakeLists.gles2.txt
+@@ -24,8 +24,12 @@ piglit_add_executable (egl-create-context-invalid-attribute-gles invalid-attribu
+ piglit_add_executable (egl-create-context-invalid-flag-gles invalid-flag-gles.c common.c)
+ 
+ 
++if(PIGLIT_BUILD_GL_TESTS)
++
+ # Tests that use ES 1, ES 2, and Desktop GL.
+ piglit_add_executable (egl-create-context-invalid-gl-version invalid-gl-version.c common.c)
+ piglit_add_executable (egl-create-context-verify-gl-flavor verify-gl-flavor.c common.c)
+ 
++endif()
++
+ # vim: ft=cmake:
+diff --git a/tests/egl/spec/egl_khr_create_context/common.c b/tests/egl/spec/egl_khr_create_context/common.c
+index e94d100..75a2faa 100644
+--- a/tests/egl/spec/egl_khr_create_context/common.c
++++ b/tests/egl/spec/egl_khr_create_context/common.c
+@@ -24,7 +24,9 @@
+ #include <errno.h>
+ #include "common.h"
+ 
++#ifdef PIGLIT_HAS_X11
+ static Display *dpy = NULL;
++#endif
+ EGLDisplay egl_dpy;
+ EGLConfig cfg;
+ EGLContext ctx;
+@@ -89,7 +91,11 @@ bool
+ EGL_KHR_create_context_setup(EGLint renderable_type_mask)
+ {
+ 	EGLint config_attribs[] = {
++#ifdef PIGLIT_HAS_X11
+ 		EGL_SURFACE_TYPE, EGL_WINDOW_BIT | EGL_PIXMAP_BIT | EGL_PBUFFER_BIT,
++#else
++		EGL_SURFACE_TYPE, EGL_WINDOW_BIT  | EGL_PBUFFER_BIT,
++#endif
+ 		EGL_RED_SIZE, 1,
+ 		EGL_GREEN_SIZE, 1,
+ 		EGL_BLUE_SIZE, 1,
+@@ -100,6 +106,7 @@ EGL_KHR_create_context_setup(EGLint renderable_type_mask)
+ 	EGLint count;
+ 	EGLint major, minor;
+ 
++#ifdef PIGLIT_HAS_X11
+ 	dpy = XOpenDisplay(NULL);
+ 	if (dpy == NULL) {
+ 		fprintf(stderr, "couldn't open display\n");
+@@ -107,6 +114,10 @@ EGL_KHR_create_context_setup(EGLint renderable_type_mask)
+ 	}
+ 
+ 	egl_dpy = eglGetDisplay(dpy);
++#else
++	egl_dpy = eglGetDisplay(NULL);
++#endif
++
+ 	if (egl_dpy == EGL_NO_DISPLAY) {
+ 		fprintf(stderr, "eglGetDisplay() failed\n");
+ 		piglit_report_result(PIGLIT_FAIL);
+diff --git a/tests/egl/spec/egl_khr_create_context/common.h b/tests/egl/spec/egl_khr_create_context/common.h
+index 7aabe7b..de3f8f3 100644
+--- a/tests/egl/spec/egl_khr_create_context/common.h
++++ b/tests/egl/spec/egl_khr_create_context/common.h
+@@ -21,7 +21,9 @@
+  */
+ 
+ #include "piglit-util-gl-common.h"
++#ifdef PIGLIT_HAS_X11
+ #include <X11/Xlib.h>
++#endif
+ #include <EGL/egl.h>
+ #include <EGL/eglext.h>
+ 
+diff --git a/tests/spec/oes_compressed_etc1_rgb8_texture/CMakeLists.gles2.txt b/tests/spec/oes_compressed_etc1_rgb8_texture/CMakeLists.gles2.txt
+index 7108378..d1c4c10 100644
+--- a/tests/spec/oes_compressed_etc1_rgb8_texture/CMakeLists.gles2.txt
++++ b/tests/spec/oes_compressed_etc1_rgb8_texture/CMakeLists.gles2.txt
+@@ -1,7 +1,9 @@
++if(PIGLIT_HAS_OpenGL)
+ include_directories(
+ 	${GLEXT_INCLUDE_DIR}
+ 	${OPENGL_INCLUDE_PATH}
+ )
++endif()
+ 
+ link_libraries(
+         piglitutil_${piglit_target_api}
+diff --git a/tests/util/CMakeLists.txt b/tests/util/CMakeLists.txt
+index 7e5c615..fc31e90 100644
+--- a/tests/util/CMakeLists.txt
++++ b/tests/util/CMakeLists.txt
+@@ -50,7 +50,7 @@ set(UTIL_GL_LIBS
+         ${WAFFLE_LDFLAGS}
+ 	)
+ 
+-if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
++if(PIGLIT_HAS_X11)
+ 	# One needs to have at least one hardware driver present, otherwise
+ 	# there is no point compiling just the dispatcher.
+ 	if(PIGLIT_BUILD_DMA_BUF_TESTS)
+@@ -83,7 +83,7 @@ if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
+ 		${UTIL_GL_LIBS}
+ 		${X11_X11_LIB}
+ 	)
+-endif(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
++endif(PIGLIT_HAS_X11)
+ 
+ if(EGL_FOUND)
+ 	set(UTIL_GL_SOURCES
+diff --git a/tests/util/piglit-dispatch-init.c b/tests/util/piglit-dispatch-init.c
+index 8984815..77c1054 100644
+--- a/tests/util/piglit-dispatch-init.c
++++ b/tests/util/piglit-dispatch-init.c
+@@ -33,7 +33,11 @@
+ 
+ #else /* Linux */
+ 
++#ifdef PIGLIT_HAS_X11
+ #include "glxew.h"
++#else
++#include <EGL/egl.h>
++#endif
+ 
+ #endif
+ 
+@@ -143,7 +147,11 @@ get_core_proc_address(const char *function_name, int gl_10x_version)
+ static piglit_dispatch_function_ptr
+ get_ext_proc_address(const char *function_name)
+ {
++#ifdef PIGLIT_HAS_X11
+ 	return glXGetProcAddressARB((const GLubyte *) function_name);
++#else
++	return eglGetProcAddress((const GLubyte *) function_name);
++#endif
+ }
+ 
+ /**
+-- 
+1.7.10.3
+
