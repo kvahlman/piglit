@@ -9,10 +9,10 @@ License:        BSD
 URL:            http://people.freedesktop.org/~nh/piglit/
 
 BuildRequires:  cmake
-BuildRequires:  pkgconfig(egl)
-BuildRequires:  pkgconfig(wayland-egl)
-BuildRequires:  pkgconfig(glesv1_cm)
-BuildRequires:  pkgconfig(glesv2)
+BuildRequires:  libEGL-devel
+BuildRequires:  libwayland-egl-devel
+BuildRequires:  libGLESv1-devel
+BuildRequires:  libGLESv2-devel
 
 BuildRequires:  python
 BuildRequires:  python-mako
