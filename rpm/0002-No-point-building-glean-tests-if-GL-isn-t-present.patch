@@ -1,0 +1,28 @@
+From 5bf3f7b72e9210b7591de801b89e17c9e3fbac66 Mon Sep 17 00:00:00 2001
+From: Kalle Vahlman <kalle.vahlman@movial.com>
+Date: Thu, 12 Dec 2013 13:02:36 +0000
+Subject: [PATCH 2/3] No point building glean tests if GL isn't present
+
+Signed-off-by: Kalle Vahlman <kalle.vahlman@movial.com>
+---
+ tests/CMakeLists.txt |    3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/tests/CMakeLists.txt b/tests/CMakeLists.txt
+index af842fc..7503605 100644
+--- a/tests/CMakeLists.txt
++++ b/tests/CMakeLists.txt
+@@ -20,7 +20,10 @@ add_subdirectory (fast_color_clear)
+ if (NOT APPLE)
+ 	# glean relies on AGL which is deprecated/broken on recent Mac OS X
+ 	# versions
++IF(PIGLIT_BUILD_GL_TESTS)
+ 	add_subdirectory (glean)
++ENDIF(PIGLIT_BUILD_GL_TESTS)
++
+ endif ()
+ 
+ IF(EGL_FOUND)
+-- 
+1.7.10.3
+

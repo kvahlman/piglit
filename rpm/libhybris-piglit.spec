@@ -4,6 +4,8 @@ Release:        1
 Summary:        Collection of automated tests for OpenGL/ES
 Source0:        %{name}-%{version}.tar.gz
 Patch0:         0001-Fix-build-and-run-issues-with-non-X11-Linux-platform.patch
+Patch1:         0002-No-point-building-glean-tests-if-GL-isn-t-present.patch
+Patch2:         0003-Try-finding-GLES-libraries-with-pkg-config-on-Linux.patch
 Group:          Development/Tools
 License:        BSD
 URL:            http://people.freedesktop.org/~nh/piglit/
@@ -29,6 +31,8 @@ with a simple means to perform regression tests.
 %prep
 %setup -q
 %patch0 -p1 -d piglit
+%patch1 -p1 -d piglit
+%patch2 -p1 -d piglit
 
 %build
 cd piglit

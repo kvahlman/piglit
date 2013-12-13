@@ -1,0 +1,49 @@
+From bc90c66603cdb1d551955b4846d5d0bc91748243 Mon Sep 17 00:00:00 2001
+From: Kalle Vahlman <kalle.vahlman@movial.com>
+Date: Fri, 13 Dec 2013 13:50:52 +0000
+Subject: [PATCH 3/3] Try finding GLES libraries with pkg-config on Linux
+
+Using pkg-config gives a chance for more sensible linking than linking
+to the libGLES*.so by path, as happens with find_library().
+
+One clear bug this causes is that usually the *.so is only included in
+a devel package, so linking by path to that means you depend on the devel
+package runtime as well. Not good!
+
+Signed-off-by: Kalle Vahlman <kalle.vahlman@movial.com>
+---
+ CMakeLists.txt |   18 ++++++++++++++++--
+ 1 file changed, 16 insertions(+), 2 deletions(-)
+
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index eb73ea4..f31c23b 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -322,8 +322,22 @@ if(PIGLIT_BUILD_GLES3_TESTS AND NOT EGL_FOUND)
+ 			    "Failed to find EGL library.")
+ endif()
+ 
+-find_library(OPENGL_gles1_LIBRARY NAMES GLESv1_CM)
+-find_library(OPENGL_gles2_LIBRARY NAMES GLESv2)
++if (${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
++	pkg_check_modules(GLESV1_CM glesv1_cm)
++	pkg_check_modules(GLESV2 glesv2)
++endif ()
++
++if (GLESV1_CM_FOUND)
++	set(OPENGL_gles1_LIBRARY ${GLESV1_CM_LDFLAGS})
++else ()
++	find_library(OPENGL_gles1_LIBRARY NAMES GLESv1_CM)
++endif ()
++
++if (GLESV2_FOUND)
++	set(OPENGL_gles2_LIBRARY ${GLESV2_LDFLAGS})
++else ()
++	find_library(OPENGL_gles2_LIBRARY NAMES GLESv2)
++endif ()
+ 
+ # Put all executables into the bin subdirectory
+ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${piglit_BINARY_DIR}/bin)
+-- 
+1.7.10.3
+
